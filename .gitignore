@@ -1,0 +1,12 @@
+node_modules/
+.pnpm-store/
+dist/
+.vite/
+.wrangler/
+.env
+.env.*
+!.env.example
+coverage/
+test-results/
+playwright-report/
+npm-debug.log*
