@@ -7,6 +7,18 @@
 - Neon Postgres database
 - Environment variables stored in Cloudflare
 
+## GitHub Pages Preview
+
+GitHub Pages can deploy the static frontend preview from `main`.
+
+Expected URL:
+
+```text
+https://punchbala.github.io/StockSignalDesk/
+```
+
+This preview does not run Cloudflare Pages Functions, scheduled jobs or backend API routes. Use Cloudflare for the full-stack V1 deployment.
+
 ## Required Secrets
 
 - `FMP_API_KEY`
@@ -24,4 +36,3 @@ Cloudflare Pages build output:
 ```text
 dist
 ```
-

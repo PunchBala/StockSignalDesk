@@ -29,7 +29,16 @@ npm run test
 
 This first commit establishes the architecture, documentation and deployment baseline. The next step is the data-provider spike for a small test watchlist.
 
+## GitHub Pages Preview
+
+The static frontend can be deployed to GitHub Pages from `main`:
+
+```text
+https://punchbala.github.io/StockSignalDesk/
+```
+
+Cloudflare remains the target for the full-stack app because GitHub Pages does not run the backend API or scheduled jobs.
+
 ## Disclaimer
 
 This app is for personal research and decision support only. It does not provide financial advice and does not place trades in V1.
-
