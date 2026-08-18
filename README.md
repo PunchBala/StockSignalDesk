@@ -19,10 +19,11 @@ The app is designed as a decision-support cockpit. It evaluates selected stocks 
 ## Scripts
 
 ```bash
-npm run dev
-npm run build
-npm run typecheck
-npm run test
+pnpm run dev
+pnpm run build
+pnpm run typecheck
+pnpm run test
+pnpm run spike:providers -- --dry-run
 ```
 
 ## Current Status
