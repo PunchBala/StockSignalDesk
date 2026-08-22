@@ -1,6 +1,4 @@
-import { evaluateStock } from "../../src/domain/evaluateStock";
-import { findMockEvaluationInput, mockEvaluationInputs } from "../../src/domain/mockStockInputs";
-import { getStockDetail, getStockList, toStockListItem } from "../../src/server/providerData";
+import { getStockDetail, getStockList } from "../../src/server/providerData";
 
 interface Env {
   FMP_API_KEY?: string;
@@ -37,12 +35,17 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
   }
 
   if (path === "/api/stocks") {
-    const { stocks, source } = shouldUseLiveData(env)
-      ? await getStockList(env)
-      : {
-          stocks: mockEvaluationInputs.map((input) => toStockListItem(input)),
-          source: "mock",
-        };
+    if (!shouldUseLiveData(env)) {
+      return json(
+        {
+          error: "Live providers are not configured",
+          requiredProviders: ["FINNHUB_API_KEY", "ALPHA_VANTAGE_API_KEY"],
+        },
+        { status: 503 },
+      );
+    }
+
+    const { stocks, source } = await getStockList(env);
 
     return json({
       data: stocks,
@@ -58,29 +61,27 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
   if (stockMatch) {
     const symbol = decodeURIComponent(stockMatch[1]);
     const detail = shouldUseLiveData(env) ? await getStockDetail(symbol, env) : null;
-    const input = detail?.input ?? findMockEvaluationInput(symbol);
 
-    if (!input) {
+    if (!detail) {
       return json(
         {
-          error: "Stock not found",
+          error: shouldUseLiveData(env) ? "Live stock data unavailable" : "Live providers are not configured",
           symbol,
-          availableSymbols: mockEvaluationInputs.map((stock) => stock.profile.symbol),
         },
-        { status: 404 },
+        { status: shouldUseLiveData(env) ? 404 : 503 },
       );
     }
 
     return json({
       data: {
-        profile: input.profile,
-        price: input.price,
-        financials: input.financials,
-        news: input.news,
-        evaluation: detail?.evaluation ?? evaluateStock(input),
+        profile: detail.input.profile,
+        price: detail.input.price,
+        financials: detail.input.financials,
+        news: detail.input.news,
+        evaluation: detail.evaluation,
       },
       meta: {
-        source: detail?.source ?? "mock",
+        source: detail.source,
       },
     });
   }

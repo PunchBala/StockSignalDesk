@@ -17,7 +17,7 @@ Reference: https://site.financialmodelingprep.com/developer/docs/quickstart
 
 ## Secondary Candidate
 
-Finnhub is a fallback or secondary source for quotes, company news and some profile data.
+Finnhub is the primary V1 source for US quotes, company news and some profile data.
 
 V1 spike checks:
 
@@ -144,7 +144,7 @@ Implemented server-side provider adapter:
 
 - US symbols use Finnhub for quote, profile, metrics and recent company news.
 - UK symbols use Alpha Vantage `GLOBAL_QUOTE` as a quote-only attempt.
-- Any missing key, provider error, rate-limit notice or blocked market falls back to the local mock snapshot.
+- Any missing key, provider error, rate-limit notice or blocked market is reported as unavailable. The deployed API does not return mock fallback data.
 - API keys remain server-side. They are read from function environment variables, not from React.
 
 Focused smoke check:
@@ -155,4 +155,4 @@ Focused smoke check:
 
 Current decision:
 
-Finnhub is the V1 live provider for US watchlist data. UK remains low-confidence until we find a free provider that reliably returns both quote and fundamentals inside the monthly budget.
+Finnhub is the V1 live provider for US watchlist data. UK remains low-confidence until we find a free provider that reliably returns both quote and fundamentals inside the monthly budget. Mock fallback has been removed so provider gaps are visible.

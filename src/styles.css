@@ -137,6 +137,21 @@ h2 {
   gap: 10px;
 }
 
+.empty-state {
+  display: grid;
+  gap: 6px;
+  border: 1px dashed var(--line);
+  border-radius: 8px;
+  background: #f9fbf8;
+  padding: 16px;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.empty-state strong {
+  color: var(--ink);
+}
+
 .stock-row {
   display: grid;
   grid-template-columns: minmax(120px, 1fr) minmax(92px, auto) auto;

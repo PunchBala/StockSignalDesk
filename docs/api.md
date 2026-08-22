@@ -19,13 +19,13 @@ Implemented routes:
 - `GET /api/stocks`
 - `GET /api/stocks/:symbol`
 
-The stock routes now attempt live server-side provider data when provider keys are configured. If no provider key is available, or if the provider returns unusable data, the routes fall back to mock snapshots evaluated by the real V1 algorithm engine.
+The stock routes require live server-side provider data. If no provider key is available, the API returns `503`. If a provider returns unusable data for a symbol, the detail route returns `404` and the list route omits that symbol.
 
 Live provider behavior:
 
 - US symbols: Finnhub quote, profile, metrics and news.
 - UK symbols: Alpha Vantage quote-only attempt.
-- Fallback: local mock data, with source metadata showing `mock` or `live+mock-fallback`.
+- No mock fallback in deployed API responses.
 
 ## Response Contracts
 

@@ -1,5 +1,4 @@
 import { evaluateStock } from "../domain/evaluateStock";
-import { findMockEvaluationInput, mockEvaluationInputs } from "../domain/mockStockInputs";
 import type {
   EvaluationInput,
   EvaluationResult,
@@ -21,7 +20,7 @@ export interface ProviderEnv {
 export interface ProviderStockDetail {
   input: EvaluationInput;
   evaluation: EvaluationResult;
-  source: "live" | "mock";
+  source: "live";
 }
 
 export interface StockListItem {
@@ -55,11 +54,10 @@ export async function getStockList(env: ProviderEnv = {}, fetcher: typeof fetch 
   const details = (await Promise.all(getWatchlistSymbols(env).map((symbol) => getStockDetail(symbol, env, fetcher)))).filter(
     (detail): detail is ProviderStockDetail => detail != null,
   );
-  const liveCount = details.filter((detail) => detail.source === "live").length;
 
   return {
     stocks: details.map((detail) => toStockListItem(detail.input, detail.evaluation)),
-    source: liveCount === details.length ? "live" : liveCount > 0 ? "live+mock-fallback" : "mock",
+    source: details.length > 0 ? "live" : "live-unavailable",
   };
 }
 
@@ -83,24 +81,10 @@ export async function getStockDetail(
       };
     }
   } catch {
-    return getMockDetail(normalizedSymbol);
-  }
-
-  return getMockDetail(normalizedSymbol);
-}
-
-export function getMockDetail(symbol: string): ProviderStockDetail | null {
-  const input = findMockEvaluationInput(symbol);
-
-  if (!input) {
     return null;
   }
 
-  return {
-    input,
-    evaluation: evaluateStock(input),
-    source: "mock",
-  };
+  return null;
 }
 
 export function toStockListItem(input: EvaluationInput, evaluation = evaluateStock(input)): StockListItem {
@@ -257,7 +241,7 @@ async function getAlphaVantageUkInput(
     profile: {
       symbol: symbol.replace(".L", ".LON"),
       displaySymbol: alphaSymbol,
-      companyName: findMockEvaluationInput(symbol)?.profile.companyName ?? symbol,
+      companyName: symbol.replace(".L", ".LON"),
       region: "UK",
       exchange: "LSE",
       currency: "GBP",

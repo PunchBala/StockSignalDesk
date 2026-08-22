@@ -13,8 +13,6 @@ import {
   Target,
   TrendingUp,
 } from "lucide-react";
-import { evaluateStock } from "./domain/evaluateStock";
-import { findMockEvaluationInput, mockEvaluationInputs } from "./domain/mockStockInputs";
 import type {
   ConfidenceLevel,
   EvaluationInput,
@@ -72,13 +70,11 @@ interface StockDetailResponse {
   };
 }
 
-const fallbackStocks: StockListItem[] = mockEvaluationInputs.map(toStockListItem);
-
 function App() {
-  const [stocks, setStocks] = useState<StockListItem[]>(fallbackStocks);
-  const [selectedSymbol, setSelectedSymbol] = useState(fallbackStocks[0]?.symbol ?? "");
-  const [stockDetail, setStockDetail] = useState<StockDetail | null>(() => buildMockDetail(fallbackStocks[0]?.symbol));
-  const [source, setSource] = useState("local-mock");
+  const [stocks, setStocks] = useState<StockListItem[]>([]);
+  const [selectedSymbol, setSelectedSymbol] = useState("");
+  const [stockDetail, setStockDetail] = useState<StockDetail | null>(null);
+  const [source, setSource] = useState("live");
   const [isLoading, setIsLoading] = useState(true);
   const [isDetailLoading, setIsDetailLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -108,8 +104,9 @@ function App() {
       } catch (caught) {
         if (!active) return;
 
-        setStocks(fallbackStocks);
-        setSource("local-mock");
+        setStocks([]);
+        setStockDetail(null);
+        setSource("live-unavailable");
         setError(caught instanceof Error ? caught.message : "Unable to load API data");
       } finally {
         if (active) {
@@ -159,7 +156,7 @@ function App() {
       } catch (caught) {
         if (!active) return;
 
-        setStockDetail(buildMockDetail(selectedSymbol));
+        setStockDetail(null);
         setDetailError(caught instanceof Error ? caught.message : "Unable to load stock detail");
       } finally {
         if (active) {
@@ -224,7 +221,7 @@ function App() {
 
       {error ? (
         <section className="notice" role="status">
-          API unavailable here, showing local mock evaluations.
+          Live stock data is unavailable. Check provider keys, rate limits or the selected watchlist.
         </section>
       ) : null}
 
@@ -235,37 +232,51 @@ function App() {
             <h2>Watchlist</h2>
           </div>
 
-          <div className="stock-list">
-            {displayStocks.map((stock) => (
-              <button
-                className={`stock-row ${stock.symbol === selectedStock?.symbol ? "selected" : ""}`}
-                key={stock.symbol}
-                type="button"
-                onClick={() => setSelectedSymbol(stock.symbol)}
-              >
-                <span>
-                  <strong>{stock.symbol}</strong>
-                  <small>{stock.companyName}</small>
-                </span>
-                <span className="row-metrics">
-                  <strong>{formatPrice(stock)}</strong>
-                  <small className={stock.changePercent != null && stock.changePercent < 0 ? "negative-text" : "positive-text"}>
-                    {formatPercent(stock.changePercent)}
-                  </small>
-                </span>
-                <span className={`rating ${statusClass(stock.status)}`}>{formatStatus(stock.status)}</span>
-              </button>
-            ))}
-          </div>
+          {displayStocks.length > 0 ? (
+            <div className="stock-list">
+              {displayStocks.map((stock) => (
+                <button
+                  className={`stock-row ${stock.symbol === selectedStock?.symbol ? "selected" : ""}`}
+                  key={stock.symbol}
+                  type="button"
+                  onClick={() => setSelectedSymbol(stock.symbol)}
+                >
+                  <span>
+                    <strong>{stock.symbol}</strong>
+                    <small>{stock.companyName}</small>
+                  </span>
+                  <span className="row-metrics">
+                    <strong>{formatPrice(stock)}</strong>
+                    <small className={stock.changePercent != null && stock.changePercent < 0 ? "negative-text" : "positive-text"}>
+                      {formatPercent(stock.changePercent)}
+                    </small>
+                  </span>
+                  <span className={`rating ${statusClass(stock.status)}`}>{formatStatus(stock.status)}</span>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className="empty-state">
+              <strong>No live stocks loaded</strong>
+              <span>Cloudflare must return provider-backed data from `/api/stocks`.</span>
+            </div>
+          )}
         </article>
 
         {selectedStock && stockDetail ? (
           <StockDetailView
             detail={stockDetail}
-            fallbackStock={selectedStock}
+            listStock={selectedStock}
             isLoading={isDetailLoading}
-            hasFallback={Boolean(detailError)}
           />
+        ) : detailError ? (
+          <article className="stock-panel">
+            <div className="panel-title">
+              <AlertTriangle size={20} />
+              <h2>Detail Unavailable</h2>
+            </div>
+            <p className="summary">{detailError}</p>
+          </article>
         ) : null}
       </section>
 
@@ -279,19 +290,17 @@ function App() {
 
 function StockDetailView({
   detail,
-  fallbackStock,
+  listStock,
   isLoading,
-  hasFallback,
 }: {
   detail: StockDetail;
-  fallbackStock: StockListItem;
+  listStock: StockListItem;
   isLoading: boolean;
-  hasFallback: boolean;
 }) {
   const { input, evaluation } = detail;
   const latestFinancials = useMemo(() => findLatestFinancials(input.financials), [input.financials]);
   const displayStock = {
-    ...fallbackStock,
+    ...listStock,
     price: input.price.price,
     currency: input.price.currency,
     priceUnit: input.price.priceUnit,
@@ -335,9 +344,9 @@ function StockDetailView({
           <MetricTile label="Confidence" value={formatConfidence(evaluation.confidence)} />
         </div>
 
-        {isLoading || hasFallback ? (
+        {isLoading ? (
           <div className="detail-note" role="status">
-            {isLoading ? "Refreshing stock detail..." : "Live detail unavailable here, using local algorithm snapshot."}
+            Refreshing stock detail...
           </div>
         ) : null}
       </article>
@@ -480,42 +489,6 @@ function MetricTile({ label, value }: { label: string; value: string }) {
       <strong>{value}</strong>
     </div>
   );
-}
-
-function toStockListItem(input: EvaluationInput): StockListItem {
-  const evaluation = evaluateStock(input);
-
-  return {
-    symbol: input.profile.symbol,
-    companyName: input.profile.companyName,
-    region: input.profile.region,
-    price: input.price.price,
-    currency: input.price.currency,
-    priceUnit: input.price.priceUnit,
-    changePercent: input.price.changePercent ?? null,
-    status: evaluation.status,
-    bias: evaluation.bias,
-    confidence: evaluation.confidence,
-    score: evaluation.score,
-    topReason: evaluation.topReason,
-    fairValue: evaluation.fairValue,
-    dataQuality: evaluation.dataQuality,
-    evaluatedAt: evaluation.evaluatedAt,
-  };
-}
-
-function buildMockDetail(symbol?: string): StockDetail | null {
-  const input = symbol ? findMockEvaluationInput(symbol) : mockEvaluationInputs[0];
-
-  if (!input) {
-    return null;
-  }
-
-  return {
-    input,
-    evaluation: evaluateStock(input),
-    source: "local-mock",
-  };
 }
 
 function formatStatus(status: RatingStatus) {

@@ -58,14 +58,14 @@ describe("provider data adapter", () => {
     expect(JSON.stringify(detail)).not.toContain("secret");
   });
 
-  it("falls back to mock data when live providers are not configured", async () => {
+  it("returns no stocks when live providers are not configured", async () => {
     const list = await getStockList({}, vi.fn() as unknown as typeof fetch);
 
-    expect(list.source).toBe("mock");
-    expect(list.stocks.map((stock) => stock.symbol)).toContain("RKLB");
+    expect(list.source).toBe("live-unavailable");
+    expect(list.stocks).toEqual([]);
   });
 
-  it("does not replace an unknown symbol with the first mock stock", async () => {
+  it("returns null for an unknown or unavailable symbol", async () => {
     const detail = await getStockDetail("NOPE", {}, vi.fn() as unknown as typeof fetch);
 
     expect(detail).toBeNull();

@@ -14,7 +14,7 @@ The app is designed as a decision-support cockpit. It evaluates selected stocks 
 - React, Vite and TypeScript for the frontend
 - Drizzle ORM and Zod for backend data access and validation
 - Financial Modeling Prep as the first data provider
-- Finnhub as fallback or secondary provider
+- Finnhub as the primary US quote, metrics and news provider
 
 ## Scripts
 
@@ -32,13 +32,13 @@ The provider spike reads local `.env` values automatically. Keep API keys in `.e
 
 ## Current Status
 
-The app has a V1 dashboard, stock detail view, mock API routes, the first explainable algorithm engine, and a server-side provider adapter.
+The app has a V1 dashboard, stock detail view, live API routes, the first explainable algorithm engine, and a server-side provider adapter.
 
 Current live-provider position:
 
 - Finnhub is wired for US quote/profile/metrics/news when `FINNHUB_API_KEY` is available server-side.
 - Alpha Vantage is wired as a UK quote-only attempt when `ALPHA_VANTAGE_API_KEY` is available server-side.
-- Missing, blocked or rate-limited provider responses fall back to local mock snapshots.
+- Missing, blocked or rate-limited provider responses are shown as unavailable rather than replaced with mock data.
 - GitHub Pages remains a static preview and cannot securely run provider keys by itself.
 
 ## GitHub Pages Preview
