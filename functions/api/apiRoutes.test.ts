@@ -39,6 +39,7 @@ describe("API routes", () => {
     const body = (await response.json()) as StocksListResponse;
 
     expect(response.status).toBe(200);
+    expect(response.headers.get("x-stock-cache")).toBe("BYPASS");
     expect(body.meta).toEqual({ count: 3, source: "live" });
     expect(body.data.map((stock: { symbol: string }) => stock.symbol)).toContain("GOOGL");
     expect(body.data.every((stock: { status: string; score: number }) => stock.status && stock.score >= 0)).toBe(true);
@@ -52,6 +53,7 @@ describe("API routes", () => {
     const body = (await response.json()) as StockDetailResponse;
 
     expect(response.status).toBe(200);
+    expect(response.headers.get("x-stock-cache")).toBe("BYPASS");
     expect(body.data.profile.symbol).toBe("GOOGL");
     expect(body.meta.source).toBe("live");
     expect(body.data.evaluation.status).toBeTruthy();
@@ -64,7 +66,36 @@ describe("API routes", () => {
     const body = (await response.json()) as ApiErrorResponse;
 
     expect(response.status).toBe(404);
+    expect(response.headers.get("cache-control")).toBe("no-store");
     expect(body.error).toBe("Live stock data unavailable");
+  });
+
+  it("caches successful live stock list responses", async () => {
+    const fetcher = stubFinnhubFetch();
+    const cache = new MemoryCache();
+    vi.stubGlobal("caches", { default: cache });
+
+    const first = await callRoute("/api/stocks", { FINNHUB_API_KEY: "secret" });
+    const second = await callRoute("/api/stocks", { FINNHUB_API_KEY: "secret" });
+
+    expect(first.headers.get("x-stock-cache")).toBe("MISS");
+    expect(second.headers.get("x-stock-cache")).toBe("HIT");
+    expect(fetcher).toHaveBeenCalledTimes(12);
+  });
+
+  it("allows cache TTL to be disabled", async () => {
+    const fetcher = stubFinnhubFetch();
+    const cache = new MemoryCache();
+    vi.stubGlobal("caches", { default: cache });
+
+    const response = await callRoute("/api/stocks", {
+      FINNHUB_API_KEY: "secret",
+      STOCK_CACHE_TTL_SECONDS: "0",
+    });
+
+    expect(response.headers.get("x-stock-cache")).toBe("BYPASS");
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    expect(fetcher).toHaveBeenCalledTimes(12);
   });
 });
 
@@ -122,53 +153,66 @@ interface ApiErrorResponse {
 }
 
 function stubFinnhubFetch() {
-  vi.stubGlobal(
-    "fetch",
-    vi.fn(async (url: string) => {
-      if (url.includes("/quote")) {
-        return jsonResponse({ c: 185, d: 2.5, dp: 1.4, h: 187, l: 181, o: 182, pc: 182.5 });
-      }
+  const fetcher = vi.fn(async (url: string) => {
+    if (url.includes("/quote")) {
+      return jsonResponse({ c: 185, d: 2.5, dp: 1.4, h: 187, l: 181, o: 182, pc: 182.5 });
+    }
 
-      if (url.includes("/stock/profile2")) {
-        const symbol = new URL(url).searchParams.get("symbol") ?? "GOOGL";
-        return jsonResponse({
-          ticker: symbol,
-          name: `${symbol} Live Corp`,
-          exchange: "NASDAQ",
-          currency: "USD",
-          finnhubIndustry: "Technology",
-          marketCapitalization: 2_300_000,
-          shareOutstanding: 12_000,
-        });
-      }
+    if (url.includes("/stock/profile2")) {
+      const symbol = new URL(url).searchParams.get("symbol") ?? "GOOGL";
+      return jsonResponse({
+        ticker: symbol,
+        name: `${symbol} Live Corp`,
+        exchange: "NASDAQ",
+        currency: "USD",
+        finnhubIndustry: "Technology",
+        marketCapitalization: 2_300_000,
+        shareOutstanding: 12_000,
+      });
+    }
 
-      if (url.includes("/stock/metric")) {
-        return jsonResponse({
-          metric: {
-            peBasicExclExtraTTM: 24,
-            psTTM: 7,
-            grossMarginTTM: 58,
-            operatingMarginTTM: 31,
-            roeTTM: 25,
-            roicTTM: 19,
-            freeCashFlowPerShareTTM: 8,
-            revenueGrowthTTMYoy: 14,
-          },
-        });
-      }
-
-      return jsonResponse([
-        {
-          id: 1,
-          headline: "Company wins new cloud contract",
-          source: "Mock Wire",
-          url: "https://example.com/news",
-          datetime: 1_790_000_000,
-          summary: "Growth signal",
+    if (url.includes("/stock/metric")) {
+      return jsonResponse({
+        metric: {
+          peBasicExclExtraTTM: 24,
+          psTTM: 7,
+          grossMarginTTM: 58,
+          operatingMarginTTM: 31,
+          roeTTM: 25,
+          roicTTM: 19,
+          freeCashFlowPerShareTTM: 8,
+          revenueGrowthTTMYoy: 14,
         },
-      ]);
-    }),
-  );
+      });
+    }
+
+    return jsonResponse([
+      {
+        id: 1,
+        headline: "Company wins new cloud contract",
+        source: "Mock Wire",
+        url: "https://example.com/news",
+        datetime: 1_790_000_000,
+        summary: "Growth signal",
+      },
+    ]);
+  });
+
+  vi.stubGlobal("fetch", fetcher);
+
+  return fetcher;
+}
+
+class MemoryCache {
+  private readonly responses = new Map<string, Response>();
+
+  async match(request: Request) {
+    return this.responses.get(request.url)?.clone();
+  }
+
+  async put(request: Request, response: Response) {
+    this.responses.set(request.url, response.clone());
+  }
 }
 
 function jsonResponse(body: unknown, status = 200) {

@@ -40,6 +40,7 @@ Current live-provider position:
 - Alpha Vantage is wired as a UK quote-only attempt when `ALPHA_VANTAGE_API_KEY` is available server-side.
 - Missing, blocked or rate-limited provider responses are shown as unavailable rather than replaced with mock data.
 - GitHub Pages remains a static preview and cannot securely run provider keys by itself.
+- Live API responses are cached for 10 minutes by default to protect free provider limits.
 
 ## GitHub Pages Preview
 

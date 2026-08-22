@@ -39,3 +39,13 @@ Provider keys must be configured only in server-side environments:
 - Cloudflare Pages Function environment variables for hosted API routes.
 
 Do not expose provider keys through Vite `VITE_*` variables or frontend code.
+
+## Caching
+
+Successful live stock responses are cached at the API route level before provider calls:
+
+- Default TTL: `600` seconds.
+- Override with `STOCK_CACHE_TTL_SECONDS`.
+- Set `STOCK_CACHE_TTL_SECONDS=0` to disable API caching.
+- Only successful responses are cached. Provider errors and missing-key responses use `Cache-Control: no-store`.
+- Responses include `x-stock-cache` with `HIT`, `MISS` or `BYPASS`.
