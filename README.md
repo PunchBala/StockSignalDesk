@@ -32,7 +32,14 @@ The provider spike reads local `.env` values automatically. Keep API keys in `.e
 
 ## Current Status
 
-This first commit establishes the architecture, documentation and deployment baseline. The next step is the data-provider spike for a small test watchlist.
+The app has a V1 dashboard, stock detail view, mock API routes, the first explainable algorithm engine, and a server-side provider adapter.
+
+Current live-provider position:
+
+- Finnhub is wired for US quote/profile/metrics/news when `FINNHUB_API_KEY` is available server-side.
+- Alpha Vantage is wired as a UK quote-only attempt when `ALPHA_VANTAGE_API_KEY` is available server-side.
+- Missing, blocked or rate-limited provider responses fall back to local mock snapshots.
+- GitHub Pages remains a static preview and cannot securely run provider keys by itself.
 
 ## GitHub Pages Preview
 

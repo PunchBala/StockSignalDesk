@@ -1,11 +1,13 @@
 import { evaluateStock } from "../../src/domain/evaluateStock";
 import { findMockEvaluationInput, mockEvaluationInputs } from "../../src/domain/mockStockInputs";
+import { getStockDetail, getStockList, toStockListItem } from "../../src/server/providerData";
 
 interface Env {
   FMP_API_KEY?: string;
   FINNHUB_API_KEY?: string;
   ALPHA_VANTAGE_API_KEY?: string;
   DATABASE_URL?: string;
+  WATCHLIST_SYMBOLS?: string;
 }
 
 const json = (body: unknown, init?: ResponseInit) =>
@@ -35,33 +37,18 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
   }
 
   if (path === "/api/stocks") {
-    const stocks = mockEvaluationInputs.map((input) => {
-      const evaluation = evaluateStock(input);
-
-      return {
-        symbol: input.profile.symbol,
-        companyName: input.profile.companyName,
-        region: input.profile.region,
-        price: input.price.price,
-        currency: input.price.currency,
-        priceUnit: input.price.priceUnit,
-        changePercent: input.price.changePercent ?? null,
-        status: evaluation.status,
-        bias: evaluation.bias,
-        confidence: evaluation.confidence,
-        score: evaluation.score,
-        topReason: evaluation.topReason,
-        fairValue: evaluation.fairValue,
-        dataQuality: evaluation.dataQuality,
-        evaluatedAt: evaluation.evaluatedAt,
-      };
-    });
+    const { stocks, source } = shouldUseLiveData(env)
+      ? await getStockList(env)
+      : {
+          stocks: mockEvaluationInputs.map((input) => toStockListItem(input)),
+          source: "mock",
+        };
 
     return json({
       data: stocks,
       meta: {
         count: stocks.length,
-        source: "mock",
+        source,
       },
     });
   }
@@ -70,7 +57,8 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
 
   if (stockMatch) {
     const symbol = decodeURIComponent(stockMatch[1]);
-    const input = findMockEvaluationInput(symbol);
+    const detail = shouldUseLiveData(env) ? await getStockDetail(symbol, env) : null;
+    const input = detail?.input ?? findMockEvaluationInput(symbol);
 
     if (!input) {
       return json(
@@ -89,10 +77,10 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
         price: input.price,
         financials: input.financials,
         news: input.news,
-        evaluation: evaluateStock(input),
+        evaluation: detail?.evaluation ?? evaluateStock(input),
       },
       meta: {
-        source: "mock",
+        source: detail?.source ?? "mock",
       },
     });
   }
@@ -105,3 +93,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
     { status: 404 },
   );
 };
+
+function shouldUseLiveData(env: Env) {
+  return Boolean(env.FINNHUB_API_KEY || env.ALPHA_VANTAGE_API_KEY);
+}

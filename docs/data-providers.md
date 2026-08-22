@@ -50,6 +50,7 @@ Reference: https://www.alphavantage.co/documentation/
 - Store raw response metadata for debugging.
 - Normalize all providers into internal snapshots before evaluation.
 - Never expose API keys to the frontend.
+- GitHub Pages is static only, so live providers must run in server-side code such as Cloudflare Pages Functions or trusted local tests.
 
 ## V1 Spike Symbols
 
@@ -136,3 +137,22 @@ Observed result:
 Decision:
 
 Alpha Vantage is useful for UK quote fallback, but the free tier is too constrained for broad multi-endpoint UK fundamentals. V1 should use Alpha Vantage carefully for quote-only UK checks unless we add another UK provider.
+
+## Step 8 Adapter Result: 2026-08-22
+
+Implemented server-side provider adapter:
+
+- US symbols use Finnhub for quote, profile, metrics and recent company news.
+- UK symbols use Alpha Vantage `GLOBAL_QUOTE` as a quote-only attempt.
+- Any missing key, provider error, rate-limit notice or blocked market falls back to the local mock snapshot.
+- API keys remain server-side. They are read from function environment variables, not from React.
+
+Focused smoke check:
+
+- `GOOGL`: Finnhub quote, profile and metrics returned usable data.
+- `RR.L`: Finnhub returned `403`.
+- `RR.L`: Alpha Vantage returned a provider `Information` notice during this run, so the adapter fell back safely.
+
+Current decision:
+
+Finnhub is the V1 live provider for US watchlist data. UK remains low-confidence until we find a free provider that reliably returns both quote and fundamentals inside the monthly budget.
