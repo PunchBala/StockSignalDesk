@@ -34,7 +34,7 @@ export function evaluateStock(rawInput: EvaluationInput, evaluatedAt = new Date(
   const expectedReturnPercent = estimateExpectedReturn(score, input.dataQuality.completeness);
   const fairValue = estimateFairValue(input.price.price, expectedReturnPercent);
   const priceZones = buildPriceZones(fairValue, input.price.currency, input.price.priceUnit);
-  const status = chooseStatus(input, score, safetyScore, expectedReturnPercent, priceZones);
+  const status = chooseStatus(input, safetyScore, priceZones);
   const riskFlags = buildRiskFlags(input, latestFinancials, safetyScore);
   const whatWouldChangeRating = buildChangeConditions(status, input.profile.region, riskFlags);
 
@@ -204,9 +204,7 @@ function scoreNews(news: NewsItem[]): number {
 
 function chooseStatus(
   input: EvaluationInput,
-  score: number,
   safetyScore: number,
-  expectedReturnPercent: number,
   priceZones: PriceZones,
 ): RatingStatus {
   const hasCriticalIssue = input.dataQuality.issues.some((issue) => issue.severity === "critical");
@@ -217,35 +215,11 @@ function chooseStatus(
 
   const priceZoneStatus = statusFromCurrentPrice(input.price.price, priceZones);
 
-  if (hasCriticalIssue || safetyScore < 25 || expectedReturnPercent <= -15 || priceZoneStatus === "hard_sell") {
+  if (hasCriticalIssue || safetyScore < 25) {
     return "hard_sell";
   }
 
-  if (score < 40 || expectedReturnPercent < -8 || priceZoneStatus === "sell") {
-    return "sell";
-  }
-
-  if (
-    priceZoneStatus === "insane_cheap" &&
-    score >= 82 &&
-    safetyScore >= 60 &&
-    input.dataQuality.completeness >= 75 &&
-    input.dataQuality.confidence !== "low" &&
-    expectedReturnPercent >= 20
-  ) {
-    return "insane_cheap";
-  }
-
-  if (
-    (priceZoneStatus === "buy" || score >= 64) &&
-    safetyScore >= 45 &&
-    input.dataQuality.confidence !== "low" &&
-    expectedReturnPercent >= 8
-  ) {
-    return "buy";
-  }
-
-  return "hold";
+  return priceZoneStatus;
 }
 
 function weightedScore(factors: FactorScore[]): number {

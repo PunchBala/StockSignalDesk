@@ -5,11 +5,13 @@ import type { EvaluationInput } from "./stockTypes";
 const now = "2026-08-22T12:40:00.000Z";
 
 describe("evaluateStock", () => {
-  it("rates a high-quality cash-generative stock as buy", () => {
+  it("keeps a high-quality cash-generative stock at hold when price is in the hold zone", () => {
     const result = evaluateStock(makeInput(), now);
 
-    expect(result.status).toBe("buy");
+    expect(result.status).toBe("hold");
     expect(result.score).toBeGreaterThanOrEqual(64);
+    expect(result.priceZones.hold.min).toBeLessThanOrEqual(320);
+    expect(result.priceZones.hold.max).toBeGreaterThanOrEqual(320);
     expect(result.factorScores.map((factor) => factor.name)).toContain("value");
   });
 

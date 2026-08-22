@@ -130,6 +130,7 @@ function App() {
     async function loadDetail() {
       setIsDetailLoading(true);
       setDetailError(null);
+      setStockDetail(null);
 
       try {
         const response = await fetch(`/api/stocks/${encodeURIComponent(selectedSymbol)}`);
@@ -200,6 +201,7 @@ function App() {
     () => displayStocks.find((stock) => stock.symbol === selectedSymbol) ?? displayStocks[0],
     [selectedSymbol, displayStocks],
   );
+  const selectedDetail = stockDetail?.input.profile.symbol === selectedSymbol ? stockDetail : null;
 
   return (
     <main className="app-shell">
@@ -263,12 +265,20 @@ function App() {
           )}
         </article>
 
-        {selectedStock && stockDetail ? (
+        {selectedStock && selectedDetail ? (
           <StockDetailView
-            detail={stockDetail}
+            detail={selectedDetail}
             listStock={selectedStock}
             isLoading={isDetailLoading}
           />
+        ) : selectedStock && isDetailLoading ? (
+          <article className="stock-panel">
+            <div className="panel-title">
+              <Clock size={20} />
+              <h2>Loading Detail</h2>
+            </div>
+            <p className="summary">Loading {selectedStock.symbol} evaluation...</p>
+          </article>
         ) : detailError ? (
           <article className="stock-panel">
             <div className="panel-title">

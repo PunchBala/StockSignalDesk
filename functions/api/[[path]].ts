@@ -10,6 +10,7 @@ interface Env {
 }
 
 const DEFAULT_CACHE_TTL_SECONDS = 600;
+const API_CACHE_VERSION = "status-zone-v2";
 
 const json = (body: unknown, init?: ResponseInit) =>
   new Response(JSON.stringify(body, null, 2), {
@@ -135,6 +136,7 @@ async function withApiCache(
 
 function cacheKeyFor(request: Request) {
   const url = new URL(request.url);
+  url.searchParams.set("__cacheVersion", API_CACHE_VERSION);
   url.searchParams.sort();
   return url.toString();
 }
