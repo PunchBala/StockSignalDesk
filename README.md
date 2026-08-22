@@ -24,6 +24,8 @@ pnpm run build
 pnpm run typecheck
 pnpm run test
 pnpm run spike:providers -- --dry-run
+pnpm run spike:providers -- --providers=alpha-vantage --symbols=RR.LON,SHEL.LON,BARC.LON
+pnpm run spike:providers -- --providers=alpha-vantage --symbols=RR.LON,SHEL.LON,BARC.LON --capabilities=globalQuote
 ```
 
 The provider spike reads local `.env` values automatically. Keep API keys in `.env`, not `.env.example`.

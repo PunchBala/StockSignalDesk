@@ -28,6 +28,21 @@ V1 spike checks:
 
 Reference: https://www.finnhub.io/docs/api
 
+## UK Candidate
+
+Alpha Vantage is the first UK candidate because its docs show London Stock Exchange symbols such as `TSCO.LON`.
+
+V1 UK spike checks:
+
+- `GLOBAL_QUOTE`
+- `TIME_SERIES_DAILY`
+- `OVERVIEW`
+- `INCOME_STATEMENT`
+- `BALANCE_SHEET`
+- `CASH_FLOW`
+
+Reference: https://www.alphavantage.co/documentation/
+
 ## Provider Rules
 
 - Cache provider responses.
@@ -55,7 +70,19 @@ pnpm run spike:providers -- --dry-run
 Run real checks after adding local environment variables:
 
 ```bash
-FMP_API_KEY=... FINNHUB_API_KEY=... pnpm run spike:providers
+FMP_API_KEY=... FINNHUB_API_KEY=... ALPHA_VANTAGE_API_KEY=... pnpm run spike:providers
+```
+
+Run a focused UK Alpha Vantage check:
+
+```bash
+pnpm run spike:providers -- --providers=alpha-vantage --symbols=RR.LON,SHEL.LON,BARC.LON
+```
+
+Run a cheaper quote-only UK Alpha Vantage check:
+
+```bash
+pnpm run spike:providers -- --providers=alpha-vantage --symbols=RR.LON,SHEL.LON,BARC.LON --capabilities=globalQuote
 ```
 
 The spike output records endpoint availability, HTTP status, response time, row count and sample keys. It intentionally avoids storing full provider responses in the repository.
@@ -96,3 +123,16 @@ Observed result:
 Decision:
 
 For V1, use Finnhub as the primary provider for US quotes, company profiles, metrics and news. Use FMP opportunistically for financial statements when available. UK stock support still needs another provider or a symbol/access workaround before it can be considered reliable.
+
+## Spike Result: 2026-08-22, Alpha Vantage UK
+
+Alpha Vantage key was tested against `RR.LON`, `SHEL.LON` and `BARC.LON`.
+
+Observed result:
+
+- `RR.LON`: `GLOBAL_QUOTE` returned real quote data including price.
+- Follow-up Alpha Vantage calls quickly returned `Information` payloads, which indicates a provider notice/rate-limit style response rather than real stock data.
+
+Decision:
+
+Alpha Vantage is useful for UK quote fallback, but the free tier is too constrained for broad multi-endpoint UK fundamentals. V1 should use Alpha Vantage carefully for quote-only UK checks unless we add another UK provider.

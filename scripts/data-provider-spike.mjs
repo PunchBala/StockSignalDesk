@@ -48,6 +48,28 @@ const providerChecks = [
       },
     ],
   },
+  {
+    provider: "alpha-vantage",
+    envKey: "ALPHA_VANTAGE_API_KEY",
+    capabilities: [
+      { key: "globalQuote", url: (symbol, key) => alphaVantageUrl({ function: "GLOBAL_QUOTE", symbol, apikey: key }) },
+      {
+        key: "dailyPrice",
+        url: (symbol, key) =>
+          alphaVantageUrl({ function: "TIME_SERIES_DAILY", symbol, outputsize: "compact", apikey: key }),
+      },
+      { key: "overview", url: (symbol, key) => alphaVantageUrl({ function: "OVERVIEW", symbol, apikey: key }) },
+      {
+        key: "incomeStatement",
+        url: (symbol, key) => alphaVantageUrl({ function: "INCOME_STATEMENT", symbol, apikey: key }),
+      },
+      {
+        key: "balanceSheet",
+        url: (symbol, key) => alphaVantageUrl({ function: "BALANCE_SHEET", symbol, apikey: key }),
+      },
+      { key: "cashFlow", url: (symbol, key) => alphaVantageUrl({ function: "CASH_FLOW", symbol, apikey: key }) },
+    ],
+  },
 ];
 
 export function parseArgs(argv) {
@@ -62,9 +84,18 @@ export function parseArgs(argv) {
     .split(",")
     .map((symbol) => symbol.trim())
     .filter(Boolean);
+  const capabilities = String(args.get("--capabilities") ?? "")
+    .split(",")
+    .map((capability) => capability.trim())
+    .filter(Boolean);
 
   return {
+    capabilities,
     dryRun: args.has("--dry-run"),
+    providers: String(args.get("--providers") ?? "")
+      .split(",")
+      .map((provider) => provider.trim())
+      .filter(Boolean),
     symbols,
   };
 }
@@ -101,8 +132,17 @@ export function loadEnvFile(filePath = ".env") {
   return parseEnvText(readFileSync(filePath, "utf8"));
 }
 
-export function buildSpikePlan(env, symbols = DEFAULT_SYMBOLS) {
-  return providerChecks.map((provider) => {
+export function getSelectedProviders(providers = []) {
+  if (providers.length === 0) {
+    return providerChecks;
+  }
+
+  const selected = new Set(providers);
+  return providerChecks.filter((provider) => selected.has(provider.provider));
+}
+
+export function buildSpikePlan(env, symbols = DEFAULT_SYMBOLS, providers = []) {
+  return getSelectedProviders(providers).map((provider) => {
     const configured = Boolean(env[provider.envKey]);
 
     return {
@@ -124,24 +164,42 @@ export function summarizeJsonPayload(payload) {
   const rows = Array.isArray(payload) ? payload : [payload];
   const first = rows.find((row) => row && typeof row === "object");
   const sampleKeys = first ? Object.keys(first).slice(0, 12) : [];
-  const errorOnly = sampleKeys.length === 1 && sampleKeys[0] === "error";
+  const providerNotice = sampleKeys.some((key) => ["error", "Error Message", "Information", "Note"].includes(key));
+  const emptyNestedObject =
+    sampleKeys.length === 1 &&
+    first &&
+    typeof first[sampleKeys[0]] === "object" &&
+    !Array.isArray(first[sampleKeys[0]]) &&
+    Object.keys(first[sampleKeys[0]] ?? {}).length === 0;
 
   return {
-    hasData: rows.length > 0 && Boolean(first) && !errorOnly,
+    hasData: rows.length > 0 && Boolean(first) && !providerNotice && !emptyNestedObject,
     rowCount: rows.length,
     sampleKeys,
   };
 }
 
-export async function runSpike({ env = process.env, symbols = DEFAULT_SYMBOLS, dryRun = false, fetcher = fetch } = {}) {
-  const providerPlans = buildSpikePlan(env, symbols);
+export async function runSpike({
+  env = process.env,
+  symbols = DEFAULT_SYMBOLS,
+  providers = [],
+  capabilities = [],
+  dryRun = false,
+  fetcher = fetch,
+} = {}) {
+  const selectedProviders = getSelectedProviders(providers);
+  const providerPlans = buildSpikePlan(env, symbols, providers);
   const results = [];
 
-  for (const provider of providerChecks) {
+  for (const provider of selectedProviders) {
     const apiKey = env[provider.envKey];
 
     for (const symbol of symbols) {
       for (const capability of provider.capabilities) {
+        if (capabilities.length > 0 && !capabilities.includes(capability.key)) {
+          continue;
+        }
+
         if (!apiKey || dryRun) {
           results.push({
             provider: provider.provider,
@@ -185,6 +243,10 @@ function fmpUrl(path, params) {
 
 function finnhubUrl(path, params) {
   return buildUrl(`https://finnhub.io/api/v1/${path}`, params);
+}
+
+function alphaVantageUrl(params) {
+  return buildUrl("https://www.alphavantage.co/query", params);
 }
 
 function buildUrl(base, params) {
