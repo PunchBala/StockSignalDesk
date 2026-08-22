@@ -13,7 +13,13 @@ GET /api/evaluations/:symbol
 GET /api/news/:symbol
 ```
 
-Only `/api/health` exists in the first scaffold.
+Implemented mock routes:
+
+- `GET /api/health`
+- `GET /api/stocks`
+- `GET /api/stocks/:symbol`
+
+The stock routes return mock data evaluated by the real V1 algorithm engine. They are temporary until provider adapters and persistence are implemented.
 
 ## Response Contracts
 
