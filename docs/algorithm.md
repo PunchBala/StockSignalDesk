@@ -35,7 +35,8 @@ Each evaluation returns:
 - explanation
 - conditions that would change the rating
 
+The algorithm consumes `EvaluationInput` and returns `EvaluationResult`. It should not consume raw provider responses directly.
+
 ## Confidence
 
 Missing data lowers confidence. Low confidence can downgrade a rating. High confidence cannot rescue poor fundamentals.
-
