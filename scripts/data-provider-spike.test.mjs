@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildSpikePlan, parseArgs, runSpike, summarizeJsonPayload } from "./data-provider-spike.mjs";
+import { buildSpikePlan, parseArgs, parseEnvText, runSpike, summarizeJsonPayload } from "./data-provider-spike.mjs";
 
 describe("data provider spike", () => {
   it("uses the agreed V1 watchlist when no symbols are provided", () => {
@@ -32,6 +32,13 @@ describe("data provider spike", () => {
     });
   });
 
+  it("parses local env text without leaking it into output", () => {
+    expect(parseEnvText("FMP_API_KEY=abc123\n# comment\nFINNHUB_API_KEY=\"xyz789\"")).toEqual({
+      FMP_API_KEY: "abc123",
+      FINNHUB_API_KEY: "xyz789",
+    });
+  });
+
   it("exposes configured state per provider", () => {
     const plan = buildSpikePlan({ FMP_API_KEY: "test" }, ["GOOGL"]);
 
@@ -43,4 +50,3 @@ describe("data provider spike", () => {
 function unreachableFetch() {
   throw new Error("fetch should not be called in this test");
 }
-

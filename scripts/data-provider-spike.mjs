@@ -1,3 +1,5 @@
+import { existsSync, readFileSync } from "node:fs";
+
 const DEFAULT_SYMBOLS = ["GOOGL", "MU", "APP", "RKLB", "RR.L"];
 
 const providerChecks = [
@@ -65,6 +67,38 @@ export function parseArgs(argv) {
     dryRun: args.has("--dry-run"),
     symbols,
   };
+}
+
+export function parseEnvText(text) {
+  return text
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line && !line.startsWith("#"))
+    .reduce((env, line) => {
+      const separatorIndex = line.indexOf("=");
+
+      if (separatorIndex === -1) {
+        return env;
+      }
+
+      const key = line.slice(0, separatorIndex).trim();
+      const rawValue = line.slice(separatorIndex + 1).trim();
+      const value = rawValue.replace(/^["']|["']$/g, "");
+
+      if (key) {
+        env[key] = value;
+      }
+
+      return env;
+    }, {});
+}
+
+export function loadEnvFile(filePath = ".env") {
+  if (!existsSync(filePath)) {
+    return {};
+  }
+
+  return parseEnvText(readFileSync(filePath, "utf8"));
 }
 
 export function buildSpikePlan(env, symbols = DEFAULT_SYMBOLS) {
@@ -171,8 +205,13 @@ const currentScript = process.argv[1] ? new URL(`file://${process.argv[1].replac
 
 if (import.meta.url === currentScript) {
   const options = parseArgs(process.argv.slice(2));
-  const report = await runSpike(options);
+  const report = await runSpike({
+    ...options,
+    env: {
+      ...loadEnvFile(),
+      ...process.env,
+    },
+  });
 
   console.log(JSON.stringify(report, null, 2));
 }
-

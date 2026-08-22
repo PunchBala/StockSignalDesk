@@ -26,6 +26,8 @@ pnpm run test
 pnpm run spike:providers -- --dry-run
 ```
 
+The provider spike reads local `.env` values automatically. Keep API keys in `.env`, not `.env.example`.
+
 ## Current Status
 
 This first commit establishes the architecture, documentation and deployment baseline. The next step is the data-provider spike for a small test watchlist.
