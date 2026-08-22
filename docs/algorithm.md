@@ -37,6 +37,18 @@ Each evaluation returns:
 
 The algorithm consumes `EvaluationInput` and returns `EvaluationResult`. It should not consume raw provider responses directly.
 
+## V1 Implementation
+
+`evaluateStock(input)` is deterministic and provider-agnostic. It validates `EvaluationInput`, scores value, quality, growth, revisions, momentum, safety and news, then returns an `EvaluationResult`.
+
+V1 intentionally uses conservative fallbacks:
+
+- missing fundamentals reduce value, quality, growth and safety
+- UK quote-only inputs are allowed but can become `unrated`
+- negative news and critical data-quality issues can downgrade ratings
+- positive news can help only slightly
+- high price-to-sales and negative free cash flow add risk flags
+
 ## Confidence
 
 Missing data lowers confidence. Low confidence can downgrade a rating. High confidence cannot rescue poor fundamentals.
