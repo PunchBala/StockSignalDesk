@@ -123,11 +123,13 @@ export function buildSpikePlan(env, symbols = DEFAULT_SYMBOLS) {
 export function summarizeJsonPayload(payload) {
   const rows = Array.isArray(payload) ? payload : [payload];
   const first = rows.find((row) => row && typeof row === "object");
+  const sampleKeys = first ? Object.keys(first).slice(0, 12) : [];
+  const errorOnly = sampleKeys.length === 1 && sampleKeys[0] === "error";
 
   return {
-    hasData: rows.length > 0 && Boolean(first),
+    hasData: rows.length > 0 && Boolean(first) && !errorOnly,
     rowCount: rows.length,
-    sampleKeys: first ? Object.keys(first).slice(0, 12) : [],
+    sampleKeys,
   };
 }
 

@@ -83,3 +83,16 @@ Additional targeted checks against FMP `/api/v3` endpoints for `MU` and `RKLB` r
 Decision:
 
 FMP alone is not enough for V1 on the current key. Next provider test should add Finnhub, then we should decide whether to use Finnhub as primary for quotes/news and FMP only where financial statements are available.
+
+## Spike Result: 2026-08-22, Finnhub Added
+
+Finnhub key was tested against the same symbols.
+
+Observed result:
+
+- `GOOGL`, `MU`, `APP`, `RKLB`: quote, profile, metrics and company news returned usable data.
+- `RR.L`: quote, profile, metrics and news returned `403`.
+
+Decision:
+
+For V1, use Finnhub as the primary provider for US quotes, company profiles, metrics and news. Use FMP opportunistically for financial statements when available. UK stock support still needs another provider or a symbol/access workaround before it can be considered reliable.

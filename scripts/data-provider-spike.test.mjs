@@ -32,6 +32,14 @@ describe("data provider spike", () => {
     });
   });
 
+  it("does not treat provider error payloads as usable data", () => {
+    expect(summarizeJsonPayload({ error: "Access denied" })).toEqual({
+      hasData: false,
+      rowCount: 1,
+      sampleKeys: ["error"],
+    });
+  });
+
   it("parses local env text without leaking it into output", () => {
     expect(parseEnvText("FMP_API_KEY=abc123\n# comment\nFINNHUB_API_KEY=\"xyz789\"")).toEqual({
       FMP_API_KEY: "abc123",
