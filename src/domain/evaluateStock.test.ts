@@ -13,7 +13,7 @@ describe("evaluateStock", () => {
     expect(result.factorScores.map((factor) => factor.name)).toContain("value");
   });
 
-  it("keeps a high-growth but expensive speculative stock at hold", () => {
+  it("keeps a high-growth but expensive speculative stock at hold when price is still in the hold zone", () => {
     const result = evaluateStock(
       makeInput({
         symbol: "RKLB",
@@ -32,6 +32,8 @@ describe("evaluateStock", () => {
     );
 
     expect(result.status).toBe("hold");
+    expect(result.priceZones.hold.min).toBeLessThanOrEqual(70);
+    expect(result.priceZones.hold.max).toBeGreaterThanOrEqual(70);
     expect(result.riskFlags).toContain("Valuation is high relative to current revenue.");
   });
 
@@ -223,4 +225,3 @@ interface FixtureOptions {
   issues: EvaluationInput["dataQuality"]["issues"];
   financials?: EvaluationInput["financials"];
 }
-

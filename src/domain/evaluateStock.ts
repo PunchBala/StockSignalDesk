@@ -32,9 +32,9 @@ export function evaluateStock(rawInput: EvaluationInput, evaluatedAt = new Date(
   const dataPenalty = dataPenaltyFor(input.dataQuality.completeness);
   const score = clampScore(rawScore + (newsScore - 50) * 0.08 - riskPenalty - dataPenalty);
   const expectedReturnPercent = estimateExpectedReturn(score, input.dataQuality.completeness);
-  const status = chooseStatus(input, score, safetyScore, expectedReturnPercent);
   const fairValue = estimateFairValue(input.price.price, expectedReturnPercent);
   const priceZones = buildPriceZones(fairValue, input.price.currency, input.price.priceUnit);
+  const status = chooseStatus(input, score, safetyScore, expectedReturnPercent, priceZones);
   const riskFlags = buildRiskFlags(input, latestFinancials, safetyScore);
   const whatWouldChangeRating = buildChangeConditions(status, input.profile.region, riskFlags);
 
@@ -207,6 +207,7 @@ function chooseStatus(
   score: number,
   safetyScore: number,
   expectedReturnPercent: number,
+  priceZones: PriceZones,
 ): RatingStatus {
   const hasCriticalIssue = input.dataQuality.issues.some((issue) => issue.severity === "critical");
 
@@ -214,15 +215,18 @@ function chooseStatus(
     return "unrated";
   }
 
-  if (hasCriticalIssue || safetyScore < 25 || expectedReturnPercent <= -15) {
+  const priceZoneStatus = statusFromCurrentPrice(input.price.price, priceZones);
+
+  if (hasCriticalIssue || safetyScore < 25 || expectedReturnPercent <= -15 || priceZoneStatus === "hard_sell") {
     return "hard_sell";
   }
 
-  if (score < 40 || expectedReturnPercent < -8) {
+  if (score < 40 || expectedReturnPercent < -8 || priceZoneStatus === "sell") {
     return "sell";
   }
 
   if (
+    priceZoneStatus === "insane_cheap" &&
     score >= 82 &&
     safetyScore >= 60 &&
     input.dataQuality.completeness >= 75 &&
@@ -232,7 +236,12 @@ function chooseStatus(
     return "insane_cheap";
   }
 
-  if (score >= 64 && safetyScore >= 45 && input.dataQuality.confidence !== "low" && expectedReturnPercent >= 8) {
+  if (
+    (priceZoneStatus === "buy" || score >= 64) &&
+    safetyScore >= 45 &&
+    input.dataQuality.confidence !== "low" &&
+    expectedReturnPercent >= 8
+  ) {
     return "buy";
   }
 
@@ -292,6 +301,26 @@ function buildPriceZones(fairValue: PriceRange, currency: string, priceUnit: "ma
     currency,
     priceUnit,
   };
+}
+
+function statusFromCurrentPrice(price: number, zones: PriceZones): RatingStatus {
+  if (zones.hardSell.min != null && price >= zones.hardSell.min) {
+    return "hard_sell";
+  }
+
+  if (zones.sell.min != null && price >= zones.sell.min) {
+    return "sell";
+  }
+
+  if (zones.insaneCheap.max != null && price <= zones.insaneCheap.max) {
+    return "insane_cheap";
+  }
+
+  if (zones.buy.max != null && price <= zones.buy.max) {
+    return "buy";
+  }
+
+  return "hold";
 }
 
 function buildRiskFlags(input: EvaluationInput, financials: FinancialSnapshot | null, safetyScore: number): string[] {

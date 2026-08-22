@@ -175,9 +175,33 @@ function App() {
     };
   }, [selectedSymbol]);
 
+  const displayStocks = useMemo(
+    () =>
+      stocks.map((stock) =>
+        stockDetail?.input.profile.symbol === stock.symbol
+          ? {
+              ...stock,
+              price: stockDetail.input.price.price,
+              currency: stockDetail.input.price.currency,
+              priceUnit: stockDetail.input.price.priceUnit,
+              changePercent: stockDetail.input.price.changePercent ?? null,
+              status: stockDetail.evaluation.status,
+              bias: stockDetail.evaluation.bias,
+              confidence: stockDetail.evaluation.confidence,
+              score: stockDetail.evaluation.score,
+              topReason: stockDetail.evaluation.topReason,
+              fairValue: stockDetail.evaluation.fairValue,
+              dataQuality: stockDetail.evaluation.dataQuality,
+              evaluatedAt: stockDetail.evaluation.evaluatedAt,
+            }
+          : stock,
+      ),
+    [stockDetail, stocks],
+  );
+
   const selectedStock = useMemo(
-    () => stocks.find((stock) => stock.symbol === selectedSymbol) ?? stocks[0],
-    [selectedSymbol, stocks],
+    () => displayStocks.find((stock) => stock.symbol === selectedSymbol) ?? displayStocks[0],
+    [selectedSymbol, displayStocks],
   );
 
   return (
@@ -212,7 +236,7 @@ function App() {
           </div>
 
           <div className="stock-list">
-            {stocks.map((stock) => (
+            {displayStocks.map((stock) => (
               <button
                 className={`stock-row ${stock.symbol === selectedStock?.symbol ? "selected" : ""}`}
                 key={stock.symbol}
